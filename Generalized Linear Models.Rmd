@@ -1,0 +1,334 @@
+---
+title: "Generalized Linear Models"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Question 4 Page 172
+
+```{r}
+library(faraway)
+data(gala, package="faraway")
+
+gala <-gala[,-2]
+head(gala)
+```
+
+
+```{r}
+#Fitting a poisson model to the Species response
+galamodel <- glm(Species ~ ., family=poisson, data=gala)
+summary(galamodel)
+```
+
+A) The coefficients for the predictors are:
+  -0.0005799 for Area
+  0.003541 for Elevation
+  0.008826 for Nearest
+  -0.005709 for Scruz
+  -0.0006630 for Adjacent
+  
+The residual Deviance for this model is 716.85.
+
+```{r}
+#Computing η, dη/dμ, V(μ), and weights, while computing the first stage of the iteration
+y = (gala$Species)
+mu = y
+library(faraway)
+eta = log(mu)
+z = eta + (y-mu)/(mu)
+w = mu
+lmod = lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(lmod)
+```
+
+```{r}
+#Listing out the values to answer question B
+print("Below shows the η value")
+eta
+
+print("Below shows dη/dμ")
+derivative = 1/(mu)
+derivative 
+
+print("Below shows V(μ)")
+mu
+
+print("Below shows the weights")
+w
+```
+
+B) Form of the adjusted dependent variable is:  z = eta + (y-mu)/mu
+
+```{r}
+coef(lmod)
+deviance(lmod)
+```
+
+
+C) The coefficients in the output are fairly close to the original coefficients estimated. They are definitely not exact and have more convergence to work through, however, they show the same signs (positive/negative) and follow the decimal points closely.
+
+```{r}
+#Iterating a second time
+eta <-lmod$fit
+mu <-exp(eta)
+z <-eta + (y-mu)/(mu)
+w <-mu
+seconditeration <-lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(seconditeration)
+
+sumary(seconditeration)
+deviance(seconditeration)
+```
+
+D) The deviance for the second iteration is 570.9648. This deviance is approximately 146 away from the GLM and has some work to go. 
+
+```{r}
+#Iterating a Third Time
+eta <-seconditeration$fit
+mu <-exp(eta)
+z <-eta + (y-mu)/(mu)
+w <-mu
+thirditeration <-lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(thirditeration)
+deviance(thirditeration)
+```
+
+E) The new coefficients are:
+  -0.0005794 for Area
+  0.003538 for Elevation
+  0.008786 for Nearest
+  -0.005687 for Scruz
+  -0.0006639 for Adjacent
+  
+The deviance is 725.5103. This is much closer to the deviance of the GLM, as it is just 9 higher. This is very close. 
+
+The coefficient targets are very close and seem to only be off by the last couple of numbers, after rounding. There is definitely convergence happening to reach the GLM coefficients. 
+
+
+```{r}
+#Iterating more times, while computing deviance. Stopping when deviances do not change by much.
+eta <-thirditeration$fit
+mu <-exp(eta)
+z <-eta + (y-mu)/(mu)
+w <-mu
+fourthiteration <-lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(fourthiteration)
+deviance(fourthiteration)
+```
+
+
+```{r}
+eta <-fourthiteration$fit
+mu <-exp(eta)
+z <-eta + (y-mu)/(mu)
+w <-mu
+fifthiteration <-lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(fifthiteration)
+deviance(fifthiteration)
+```
+
+
+```{r}
+eta <-fifthiteration$fit
+mu <-exp(eta)
+z <-eta + (y-mu)/(mu)
+w <-mu
+sixthiteration <-lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(sixthiteration)
+deviance(sixthiteration)
+```
+
+
+```{r}
+eta <-sixthiteration$fit
+mu <-exp(eta)
+z <-eta + (y-mu)/(mu)
+w <-mu
+seventhiteration <-lm(z ~ Area+Elevation+Nearest+Scruz+Adjacent, weights=w, gala)
+coef(seventhiteration)
+deviance(seventhiteration)
+```
+
+F) As we can see, the deviance did not change between the sixth and seventh iteration. We will stop here and compare the coefficients using the seventh iteration. Rounded to the the fourth non-zero number after the decimal point, we have exact matches for every one of the predictors. These numbers being:
+ -0.0005799 for Area
+  0.003541 for Elevation
+  0.00826 for Nearest
+  -0.005709 for Scruz
+  -0.0006630 for Adjacent
+  
+  
+```{r}
+#Producing standard errors for coefficients
+
+xm <-model.matrix(seventhiteration) 
+wm <-diag(w)
+sqrt(diag(solve(t(xm) %*% wm %*% xm))) 
+```
+
+G) Computing the standard errors for the coefficients in this manner also computes almost exact matches to the GLM standard errors. The standard errors derived are:
+  2.627e-05 for area 
+  8.741e-05 for Elevation 
+  1.821e-03 for Nearest
+  6.256e-04 for Scruz
+  2.933e-05 for Adjacent
+These are all matches when rounded to the fourth non-zero number.
+
+
+
+Question 6 Page 173
+
+
+```{r}
+#Loading data and removing goalkeeprs since they do not take shots (usually)
+data(worldcup, package="faraway")
+head(worldcup)
+
+worldcup <- worldcup[worldcup$Position != "Goalkeeper", ]
+```
+
+```{r}
+#Fitting Poisson Model on World Cup Data
+
+worldcup$Tacklespergame = (worldcup$Tackles)/(worldcup$Time/90)
+worldcup$Passespergame = (worldcup$Passes)/(worldcup$Time/90)
+worldcupglm = glm(Shots ~ offset(log(Time/90)) + Tacklespergame + Passespergame + Team + Position, family=poisson, data=worldcup)
+
+summary(worldcupglm)
+```
+
+A) The two coefficients for tackles and passes on this regression are -0.0874 and 0.0007916, respectively. This means that, on average, per game, each additional tackle decreases the log odds of shots by 0.0874 and each additional pass increases the log odds of shots by 0.0007916.
+
+```{r}
+#Computing leverage values and observing the top 10
+head(sort(influence(worldcupglm)$hat, decreasing=TRUE), 10)
+```
+
+```{r}
+#Calculating the top 5 number of shots and means for tackles and passes per game
+head(sort(worldcup$Shots, decreasing = TRUE), 5)
+mean(worldcup$Tacklespergame)
+mean(worldcup$Passespergame)
+```
+
+
+B) Villa has the highest leverage at 0.271. This is most likely because of the very low number of tackles per game at around 0.34, while the average is almost 2. The pass per games was also slightly lower than normal at around 28.75, with the mean at 38.43. 
+
+
+```{r}
+#Making appropriate leverage model
+plot(worldcupglm, 5)
+```
+
+B) Leverage values for Villa, Park Chu-Young, and Gyan seem to be particularly high as shown in the plot above. 
+
+
+```{r}
+#Computing the maximum absolute change in regression coefficients when each case is dropped
+max(abs(influence(worldcupglm)$coef[, 2]))
+```
+
+```{r}
+#Listing all changes in the Tacklespergame coefficient to find who has the change value of "0.00784"
+head(influence(worldcupglm)$coef[, 2], 10)
+#Putting head function on this so it doesn't list forever, but I originally ran it and looked through them to find the value that I was looking for
+```
+
+
+```{r}
+#Calculating average amount of shots to corroborate reasoning behind the large change for Mascherano
+mean(worldcup$Shots)
+```
+
+```{r}
+#Plotting the change in tackle coefficient
+plot(influence(worldcupglm)$coef[, 2])
+```
+
+C) Mascherano is the largest absolute value change, as shown by the functions above with a change of -0.007841. Mascherano is unusual because he has absolutely 0 shots (extremely low) and a very large amount of both shots per game and tackles per game. 
+As I have plotted above, the change in tackle coefficients show a very large variety. There are not any that particularly stick out.
+
+
+
+```{r}
+#Calculating Cooks Statistics and observing the top 10 greatest values
+head(sort(cooks.distance(worldcupglm), decreasing=TRUE), 10)
+```
+
+
+D) Dempsey has the largest Cooks Statistic, at 0.06526, as calculated above. This is because he has a large residual, while also having a large leverage value. The high leverage is most likely due to the relatively low amount of tackles and passes per game. The large residual is because Dempsey took many more shots than expected based upon the model. He has a very large amount of shots at 15. 
+
+
+```{r}
+#Calculating the Jacknife residuals and observing the top 10 greatest absolute values.
+head(sort(abs(rstudent(worldcupglm)), decreasing=TRUE), 10)
+```
+
+
+E) Gonzalez C has the largest jacknife residual of the data set. He came to be the largest because he has a large amount of shots, while only playing a very short period of time. His residual is the largest when he is removed from the data set because he is very influential in the model and he had very odd statistics. (His Cooks Statistic was third largest, showing third largest influence on the model.) 
+
+
+```{r}
+#Plotting residuals against appropriate fitted values
+plot(residuals(worldcupglm) ~ predict(worldcupglm,type="link"), xlab=expression(hat(eta)),ylab="Deviance residuals")
+```
+
+F) The source of the lines are most likely from groupings of observed shots in the data set. The lowest line being a group that took 1 shot, the line above 2 shots, the line above that 3 shots, and so on until the lines are not clear. This plot indicates that poisson may not fit the data very well.
+
+```{r}
+#Plotting raw shots against tackles
+plot(Shots ~ Tackles, xlab="Tackles",ylab="Shots", data=worldcup)
+```
+
+```{r}
+#Plotting shots per game against tackles per game
+worldcup$Shotspergame = (worldcup$Shots)/(worldcup$Time/90)
+plot(Shotspergame~Tacklespergame, xlab="Tackles Per Game",ylab="Shots Per Game", data=worldcup)
+```
+
+```{r}
+#Plotting the linearized response against tackles per game
+
+mu <- predict(worldcupglm,type="response") 
+z <- predict(worldcupglm) + (worldcup$Shots-mu)/mu 
+plot(z ~ Tacklespergame, data=worldcup,ylab="Linearized Response") 
+```
+
+G) The first plot shows a somewhat normal curve. Players who tackled less seemed to also shoot less, working up until around the 5 tackle point. Afterwards, the line starts to decrease, meaning that more tackles also meant less shots as more tackles were taken past the 5 tackle point.
+
+The second plot shows a very large block of points in the bottom left part of the graph. It is hard to interpret as many of the players have 0 shots and tackles per game. There is no real pattern.
+
+The third plot shows a little more of a pattern as you can see it shows a bit of a decrease as tackles increases, but still maintains a very large blob of observations in one area near the 0 to 5 tackles mark. This makes it hard to detect an overall pattern.
+
+Overall, I think the first plot displays a pattern the most effectively. It displays a spike in shots around the 5 tackle mark, and a normal shaped curve around that. The other plots lack a pattern developed in order to examine any type of relationship.
+
+```{r}
+mu <- predict(worldcupglm,type="response")
+u <-(worldcup$Shots-mu)/mu + coef(worldcupglm)[2]*worldcup$Tacklespergame
+plot(u ~ Tacklespergame, worldcup,ylab="Partial Residual")
+abline(0,coef(worldcupglm)[2])
+```
+
+
+```{r}
+max(worldcup$Tacklespergame)
+
+cooks.distance(worldcupglm)[287]
+```
+
+H) We can go into the dataset to see that the observation all the way to the right is Komac with 22.5 tackles per game. Observing the statistics from Komac, we see the reason for the high rate is the very small amount of playing time (4 minutes) with one tackle. We can check the cooks distance of Komac to examine whether this point is influential or not. We find a very small cooks distance of 0.000000179, which allows us to conclude that this is not an influential point. 
+
+
+```{r}
+z <-predict(worldcupglm) + (worldcup$Shots-mu)/mu 
+plot(z ~ predict(worldcupglm), xlab="Linear predictor", ylab="Linearized Response")
+
+```
+
+I) The graph is clearly not linear. There are approximately 3 lines that seem to show a curve along with a bunch of points between 0 and 2 on the x axis that don't show a linear pattern. This graph shows that this link function is not a good choice for the model. 
